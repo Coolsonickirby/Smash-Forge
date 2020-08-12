@@ -226,12 +226,13 @@ namespace SmashForge
 
     public class Collision : LvdEntry
     {
-        public override string Magic { get { return "030401017735BB7500000002"; } }
+        public override string Magic { get { return "040401017735BB7500000002"; } }
 
         public List<Vector2> verts = new List<Vector2>();
         public List<Vector2> normals = new List<Vector2>();
         public List<CollisionCliff> cliffs = new List<CollisionCliff>();
         public List<CollisionMat> materials = new List<CollisionMat>();
+        public int somethingCount;
         //Flags: ???, rig collision, ???, drop-through
         public bool flag1 = false, flag2 = false, flag3 = false, flag4 = false;
 
@@ -296,6 +297,12 @@ namespace SmashForge
                 materials.Add(temp);
             }
 
+            f.Skip(1);
+            somethingCount = f.ReadInt();
+            for (int i = 0; i < somethingCount; i++)
+            {
+                base.Read(f);
+            }
         }
         public new void save(FileOutput f)
         {
@@ -338,6 +345,165 @@ namespace SmashForge
                 f.WriteByte(1);
                 f.WriteBytes(m.material);
             }
+
+            f.WriteByte(1);
+            f.WriteInt(somethingCount);
+            //foreach (CollisionMat m in materials)
+            //{
+            //    f.WriteByte(1);
+            //    f.WriteBytes(m.material);
+            //}
+        }
+    }
+
+    public class PokemonTrainer : LvdEntry
+    {
+        public override string Magic { get { return "040401017735BB7500000002"; } }
+
+        
+        public List<Vector3> boundray = new List<Vector3>();
+        public List<Vector3> trainerPosition = new List<Vector3>();
+        public string platformName;
+        public string subName;
+
+        public PokemonTrainer() { }
+
+        public new void read(FileData f)
+        {
+            base.Read(f);
+
+            f.Skip(1);
+
+            Vector3 boundaryMin;
+
+            boundaryMin.X = f.ReadFloat();
+            boundaryMin.Y = f.ReadFloat();
+            boundaryMin.Z = f.ReadFloat();
+
+            boundray.Add(boundaryMin);
+
+            f.Skip(1);
+
+            Vector3 boundaryMax;
+
+            boundaryMax.X = f.ReadFloat();
+            boundaryMax.Y = f.ReadFloat();
+            boundaryMax.Z = f.ReadFloat();
+
+            boundray.Add(boundaryMax);
+
+            f.Skip(1);
+            int trainerCount = f.ReadInt();
+            for (int i = 0; i < trainerCount; i++)
+            {
+                f.Skip(1);
+                Vector3 temp = new Vector3();
+                temp.X = f.ReadFloat();
+                temp.Y = f.ReadFloat();
+                temp.Z = f.ReadFloat();
+                trainerPosition.Add(temp);
+            }
+
+            f.Skip(1);
+            platformName = f.ReadString(f.Pos(), 0x40);
+            f.Skip(0x40);
+
+            f.Skip(1);
+            subName = f.ReadString(f.Pos(), 0x40);
+            f.Skip(0x40);
+        }
+        public new void save(FileOutput f)
+        {
+            base.Save(f);
+            f.WriteByte(1);
+
+            foreach(Vector3 bound in boundray)
+            {
+                f.WriteFloat(bound.X);
+                f.WriteFloat(bound.Y);
+                f.WriteFloat(bound.Z);
+                f.WriteByte(1);
+            }
+
+            f.WriteInt(trainerPosition.Count);
+
+            foreach(Vector3 pos in trainerPosition)
+            {
+                f.WriteByte(1);
+                f.WriteFloat(pos.X);
+                f.WriteFloat(pos.Y);
+                f.WriteFloat(pos.Z);
+            }
+            f.WriteByte(1);
+            f.WriteString(platformName);
+            f.WriteByte(1);
+            f.WriteString(subName);
+        }
+    }
+
+    public class ShrinkedCamera : LvdEntry
+    {
+        public override string Magic { get { return "020401017735BB7500000002"; } }
+
+
+        public Vector2 min = new Vector2();
+        public Vector2 max = new Vector2();
+
+        public ShrinkedCamera() { }
+
+        public new void read(FileData f)
+        {
+            base.Read(f);
+            f.Skip(1);
+            min.X = f.ReadFloat();
+            min.Y = f.ReadFloat();
+
+            max.X = f.ReadFloat();
+            max.Y = f.ReadFloat();
+        }
+        public new void save(FileOutput f)
+        {
+            base.Save(f);
+            f.WriteByte(1);
+
+            f.WriteFloat(min.X);
+            f.WriteFloat(min.Y);
+
+            f.WriteFloat(max.X);
+            f.WriteFloat(max.Y);
+        }
+    }
+
+    public class ShrinkedDeath : LvdEntry
+    {
+        public override string Magic { get { return "020401017735BB7500000002"; } }
+
+
+        public Vector2 min = new Vector2();
+        public Vector2 max = new Vector2();
+
+        public ShrinkedDeath() { }
+
+        public new void read(FileData f)
+        {
+            base.Read(f);
+            f.Skip(1);
+            min.X = f.ReadFloat();
+            min.Y = f.ReadFloat();
+
+            max.X = f.ReadFloat();
+            max.Y = f.ReadFloat();
+        }
+        public new void save(FileOutput f)
+        {
+            base.Save(f);
+            f.WriteByte(1);
+
+            f.WriteFloat(min.X);
+            f.WriteFloat(min.Y);
+
+            f.WriteFloat(max.X);
+            f.WriteFloat(max.Y);
         }
     }
 
@@ -557,7 +723,7 @@ namespace SmashForge
 
     public class EnemyGenerator : LvdEntry
     {
-        public override string Magic { get { return "030401017735BB7500000002"; } }
+        public override string Magic { get { return "040401017735BB7500000002"; } }
 
         public List<LVDShape> spawns = new List<LVDShape>();
         public List<LVDShape> zones = new List<LVDShape>();
@@ -685,6 +851,7 @@ namespace SmashForge
 
             shape = new LVDShape();
             shape.read(f);
+            f.Skip(6);
         }
         public new void save(FileOutput f)
         {
@@ -835,8 +1002,12 @@ namespace SmashForge
             enemyGenerators = new List<EnemyGenerator>();
             damageShapes = new List<DamageShape>();
             itemSpawns = new List<ItemSpawner>();
+            trainers = new List<PokemonTrainer>();
+            // New Entry Here
             generalShapes = new List<GeneralShape>();
             generalPoints = new List<GeneralPoint>();
+            shrinkedCameras = new List<ShrinkedCamera>();
+            shrinkedDeaths = new List<ShrinkedDeath>();
         }
         public LVD(string filename) : this()
         {
@@ -850,8 +1021,11 @@ namespace SmashForge
         public List<EnemyGenerator> enemyGenerators { get; set; }
         public List<DamageShape> damageShapes { get; set; }
         public List<ItemSpawner> itemSpawns { get; set; }
+        public List<PokemonTrainer> trainers { get; set; }
         public List<GeneralShape> generalShapes { get; set; }
         public List<GeneralPoint> generalPoints { get; set; }
+        public List<ShrinkedCamera> shrinkedCameras { get; set; }
+        public List<ShrinkedDeath> shrinkedDeaths { get; set; }
 
         public override Endianness Endian { get; set; }
 
@@ -973,6 +1147,24 @@ namespace SmashForge
                 temp.read(f);
                 itemSpawns.Add(temp);
             }
+            /*
+             * POKEMON TRAINER COLLISION GOES HERE
+             */
+            f.Skip(1);
+            int pTrainerCount = f.ReadInt();
+            for (int i = 0; i < pTrainerCount; i++)
+            {
+                PokemonTrainer temp = new PokemonTrainer();
+                temp.read(f);
+                trainers.Add(temp);
+            }
+
+            f.Skip(1);
+            int newEntry = f.ReadInt();
+            for (int i = 0; i < newEntry; i++)
+            {
+                //something????????????
+            }
 
             f.Skip(1);
             int generalShapeCount = f.ReadInt();
@@ -1008,6 +1200,24 @@ namespace SmashForge
             if (f.ReadInt() != 0) //19
                 return; //no clue how to be consistent in reading these so...
 
+            f.Skip(1);
+            int shrinkedCameraCount = f.ReadInt();
+            for (int i = 0; i < shrinkedCameraCount; i++)
+            {
+                ShrinkedCamera temp = new ShrinkedCamera();
+                temp.read(f);
+                shrinkedCameras.Add(temp);
+            }
+
+            f.Skip(1);
+            int shrinkedDeathCount = f.ReadInt();
+            for (int i = 0; i < shrinkedDeathCount; i++)
+            {
+                ShrinkedDeath temp = new ShrinkedDeath();
+                temp.read(f);
+                shrinkedDeaths.Add(temp);
+            }
+
             //LVD doesn't end here and neither does my confusion, will update this part later
         }
 
@@ -1016,7 +1226,7 @@ namespace SmashForge
             FileOutput f = new FileOutput();
             f.endian = Endianness.Big;
 
-            f.WriteHex("000000010A014C564431");
+            f.WriteHex("000000010D014C564431");
 
             f.WriteByte(1);
             f.WriteInt(collisions.Count);
@@ -1065,6 +1275,15 @@ namespace SmashForge
                 item.save(f);
 
             f.WriteByte(1);
+            f.WriteInt(trainers.Count);
+            foreach (PokemonTrainer trainer in trainers)
+                trainer.save(f);
+
+            f.WriteByte(1);
+            // COME BACK TO THIS WHEN NEW ENTRY IS FOUND
+            f.WriteInt(0);
+
+            f.WriteByte(1);
             f.WriteInt(generalShapes.Count);
             foreach (GeneralShape shape in generalShapes)
                 shape.save(f);
@@ -1079,6 +1298,16 @@ namespace SmashForge
                 f.WriteByte(1);
                 f.WriteInt(0);
             }
+
+            f.WriteByte(1);
+            f.WriteInt(shrinkedCameras.Count);
+            foreach (ShrinkedCamera shrinkedCamera in shrinkedCameras)
+                shrinkedCamera.save(f);
+
+            f.WriteByte(1);
+            f.WriteInt(shrinkedDeaths.Count);
+            foreach (ShrinkedDeath shrinkedDeath in shrinkedDeaths)
+                shrinkedDeath.save(f);
 
             return f.GetBytes();
         }
