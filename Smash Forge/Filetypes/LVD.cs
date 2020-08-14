@@ -232,7 +232,7 @@ namespace SmashForge
         public List<Vector2> normals = new List<Vector2>();
         public List<CollisionCliff> cliffs = new List<CollisionCliff>();
         public List<CollisionMat> materials = new List<CollisionMat>();
-        public int somethingCount;
+        public List<UnknownEntry> unknownEntrys = new List<UnknownEntry>();
         //Flags: ???, rig collision, ???, drop-through
         public bool flag1 = false, flag2 = false, flag3 = false, flag4 = false;
 
@@ -298,10 +298,12 @@ namespace SmashForge
             }
 
             f.Skip(1);
-            somethingCount = f.ReadInt();
+            int somethingCount = f.ReadInt();
             for (int i = 0; i < somethingCount; i++)
             {
-                base.Read(f);
+                UnknownEntry temp = new UnknownEntry();
+                temp.read(f);
+                unknownEntrys.Add(temp);
             }
         }
         public new void save(FileOutput f)
@@ -346,13 +348,14 @@ namespace SmashForge
                 f.WriteBytes(m.material);
             }
 
-            f.WriteByte(1);
-            f.WriteInt(somethingCount);
-            //foreach (CollisionMat m in materials)
-            //{
-            //    f.WriteByte(1);
-            //    f.WriteBytes(m.material);
-            //}
+
+           f.WriteByte(1);
+           f.WriteInt(unknownEntrys.Count);
+            foreach (UnknownEntry unkEntry in unknownEntrys)
+            {
+                unkEntry.save(f);
+            }
+
         }
     }
 
@@ -438,6 +441,90 @@ namespace SmashForge
             f.WriteString(platformName);
             f.WriteByte(1);
             f.WriteString(subName);
+        }
+    }
+
+    public class PokemonTrainerPlatform : LvdEntry
+    {
+        public override string Magic { get { return "010401017735BB7500000002"; } }
+
+
+        public List<Vector3> boundray = new List<Vector3>();
+        public Vector3 platformPosition = new Vector3();
+
+        public PokemonTrainerPlatform() { }
+
+        public new void read(FileData f)
+        {
+            base.Read(f);
+
+            f.Skip(1);
+
+            platformPosition.X = f.ReadFloat();
+            platformPosition.Y = f.ReadFloat();
+            platformPosition.Z = f.ReadFloat();
+            
+        }
+        public new void save(FileOutput f)
+        {
+            base.Save(f);
+            f.WriteByte(1);
+
+            f.WriteFloat(platformPosition.X);
+            f.WriteFloat(platformPosition.Y);
+            f.WriteFloat(platformPosition.Z);
+
+        }
+    }
+
+    public class UnknownEntry : LvdEntry
+    {
+        public override string Magic { get { return "020401017735BB7500000002"; } }
+
+
+        public string something;
+        public int somethingCount;
+        public Vector2 firstSet = new Vector2();
+        public Vector2 secondSet = new Vector2();
+        public Vector2 thirdSet = new Vector2();
+        public Vector2 fourthSet = new Vector2();
+
+
+        public UnknownEntry() { }
+
+        public new void read(FileData f)
+        {
+            base.Read(f);
+
+            somethingCount = f.ReadInt();
+            f.Skip(1);
+            something = f.ReadString(f.Pos(), 0x40);
+            f.Skip(0x40);
+
+            firstSet.X = f.ReadFloat();
+            firstSet.Y = f.ReadFloat();
+
+            secondSet.X = f.ReadFloat();
+            secondSet.Y = f.ReadFloat();
+
+            f.Skip(0x8);
+        }
+        public new void save(FileOutput f)
+        {
+            base.Save(f);
+
+            f.WriteInt(somethingCount);
+            f.WriteByte(1);
+            f.WriteString(something);
+            
+            f.WriteFloat(firstSet.X);
+            f.WriteFloat(firstSet.Y);
+
+            f.WriteFloat(secondSet.X);
+            f.WriteFloat(secondSet.Y);
+
+            for (int i = 0; i < 8; i++)
+                f.WriteByte(0);
         }
     }
 
@@ -851,7 +938,6 @@ namespace SmashForge
 
             shape = new LVDShape();
             shape.read(f);
-            f.Skip(6);
         }
         public new void save(FileOutput f)
         {
@@ -1003,6 +1089,7 @@ namespace SmashForge
             damageShapes = new List<DamageShape>();
             itemSpawns = new List<ItemSpawner>();
             trainers = new List<PokemonTrainer>();
+            trainersPlatform = new List<PokemonTrainerPlatform>();
             // New Entry Here
             generalShapes = new List<GeneralShape>();
             generalPoints = new List<GeneralPoint>();
@@ -1022,6 +1109,7 @@ namespace SmashForge
         public List<DamageShape> damageShapes { get; set; }
         public List<ItemSpawner> itemSpawns { get; set; }
         public List<PokemonTrainer> trainers { get; set; }
+        public List<PokemonTrainerPlatform> trainersPlatform { get; set; }
         public List<GeneralShape> generalShapes { get; set; }
         public List<GeneralPoint> generalPoints { get; set; }
         public List<ShrinkedCamera> shrinkedCameras { get; set; }
@@ -1147,9 +1235,7 @@ namespace SmashForge
                 temp.read(f);
                 itemSpawns.Add(temp);
             }
-            /*
-             * POKEMON TRAINER COLLISION GOES HERE
-             */
+
             f.Skip(1);
             int pTrainerCount = f.ReadInt();
             for (int i = 0; i < pTrainerCount; i++)
@@ -1160,10 +1246,12 @@ namespace SmashForge
             }
 
             f.Skip(1);
-            int newEntry = f.ReadInt();
-            for (int i = 0; i < newEntry; i++)
+            int pTrainerPlatformCount = f.ReadInt();
+            for (int i = 0; i < pTrainerPlatformCount; i++)
             {
-                //something????????????
+                PokemonTrainerPlatform temp = new PokemonTrainerPlatform();
+                temp.read(f);
+                trainersPlatform.Add(temp);
             }
 
             f.Skip(1);
@@ -1280,8 +1368,9 @@ namespace SmashForge
                 trainer.save(f);
 
             f.WriteByte(1);
-            // COME BACK TO THIS WHEN NEW ENTRY IS FOUND
-            f.WriteInt(0);
+            f.WriteInt(trainersPlatform.Count);
+            foreach (PokemonTrainerPlatform trainerPlatform in trainersPlatform)
+                trainerPlatform.save(f);
 
             f.WriteByte(1);
             f.WriteInt(generalShapes.Count);
